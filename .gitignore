@@ -1,0 +1,10 @@
+.DS_Store
+._*
+.AppleDouble/
+*.app/
+.build/
+build/
+.env
+.env.*
+*.mov
+*.mp4
