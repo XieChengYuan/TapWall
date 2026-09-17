@@ -107,6 +107,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var wallpaperVideo: VideoSession?
     var draftItems: [IconItem] = []
     var draftWallpaper: NSImage?
+    var draftMonitor: DirectoryMonitor?
+    var appliedMonitor: DirectoryMonitor?
+    var appliedSource: (index: Int, folder: URL)?
     var desktopMode = false
     var savedFrame = NSRect.zero
     var customFolder: URL?
@@ -269,25 +272,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         reload()
     }
-    @objc func reload() {
-        let index = console.source
-        loadedSource = index
+    private func readIcons(index: Int, folder: URL) throws -> [IconItem] {
+        var items = try Catalog.items(in: folder, desktop: true)
+        if index == 0 { items.append(contentsOf: Catalog.applications().prefix(max(0, 24 - items.count))) }
+        return Array(items.prefix(32))
+    }
+    private func refreshDraft() {
+        let folder = console.source == 2 ? (customFolder ?? Catalog.desktop) : Catalog.desktop
         do {
-            var items = try Catalog.items(in: index == 2 ? (customFolder ?? Catalog.desktop) : Catalog.desktop, desktop: true)
-            if index == 0 { items.append(contentsOf: Catalog.applications().prefix(max(0, 24 - items.count))) }
-            let total = items.count
-            items = Array(items.prefix(32))
+            let items = try readIcons(index: console.source, folder: folder)
+            let changed = items.map(\.url) != draftItems.map(\.url)
             draftItems = items
-            if !console.hasApplied { scene.load(items) }
+            if !console.hasApplied && (changed || scene.files.isEmpty) { scene.load(items) }
             console.count = items.count
-            console.isFalling = false
-            console.status = total > 32 ? "为保持交互流畅，显示前 32 个项目。原文件和 Finder 布局未改动。" : "双击打开 · 右键在 Finder 中显示"
+            console.status = items.count == 32 ? "图标已同步 · 最多显示 32 个项目" : "图标已同步 · 新文件会自动显示"
         } catch {
-            draftItems = []
-            if !console.hasApplied { scene.load([]) }
-            console.count = 0; console.isFalling = false
-            console.status = "读取失败：\(error.localizedDescription)；可通过“选择文件夹”授权访问。"
+            console.status = "读取失败：\(error.localizedDescription)；保留当前图标。"
         }
+    }
+    private func refreshApplied() {
+        guard let source = appliedSource else { return }
+        do {
+            let items = try readIcons(index: source.index, folder: source.folder)
+            guard items.map(\.url) != scene.files.map({ $0.item.url }) else { return }
+            // Keep the applied arrangement and animation modes, not the pending edits.
+            scene.load(items)
+            if let live = wallpaperVideo {
+                let time = live.player?.currentTime().seconds ?? live.currentTime
+                spatial.sample(time: time.isFinite ? time : live.currentTime, schedule: live.schedule)
+            }
+            console.status = "壁纸图标已自动同步 · 视频继续播放"
+        } catch {
+            console.status = "暂时无法同步文件夹，保留现有图标：\(error.localizedDescription)"
+        }
+    }
+    @objc func reload() {
+        loadedSource = console.source
+        let folder = console.source == 2 ? (customFolder ?? Catalog.desktop) : Catalog.desktop
+        draftMonitor = DirectoryMonitor(url: folder) { [weak self] in self?.refreshDraft() }
+        refreshDraft()
+        refreshApplied()
     }
     func applySettings() {
         guard !video.isLoading, video.error == nil else { return }
@@ -298,6 +322,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         scene.arrangement = console.arrangement; scene.edge = console.edge
         scene.returnMode = console.returnMode; scene.dropMode = console.dropMode
         scene.load(draftItems)
+        let folder = console.source == 2 ? (customFolder ?? Catalog.desktop) : Catalog.desktop
+        appliedSource = (console.source, folder)
+        appliedMonitor = DirectoryMonitor(url: folder) { [weak self] in self?.refreshApplied() }
         stage.playerLayer.player = applied?.player
         stage.hasVideo = applied != nil
         stage.wallpaper = draftWallpaper

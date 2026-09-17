@@ -9,3 +9,6 @@ bash build.sh
 swift Tests/MakeFixture.swift "$TEST_DIR/fixture.mov"
 swiftc -swift-version 5 Sources/Models.swift Sources/VideoSession.swift Tests/VideoChecks.swift -o "$TEST_DIR/VideoChecks"
 "$TEST_DIR/VideoChecks" "$TEST_DIR/fixture.mov"
+
+swiftc -swift-version 5 Sources/DirectoryMonitor.swift Tests/DirectoryChecks.swift -o "$TEST_DIR/DirectoryChecks"
+"$TEST_DIR/DirectoryChecks"
