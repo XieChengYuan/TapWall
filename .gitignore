@@ -10,3 +10,4 @@ build/
 *.mp4
 
 !Assets/Examples/default-wallpaper.mp4
+!docs/media/demo.mp4

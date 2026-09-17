@@ -22,7 +22,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>TapWall</string>
 <key>CFBundleIconFile</key><string>TapWall</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.4.3</string>
+<key>CFBundleShortVersionString</key><string>0.4.4</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSDesktopFolderUsageDescription</key><string>读取真实桌面项目的名称和图标，用于互动展示；不会修改或移动文件。</string>

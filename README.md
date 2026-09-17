@@ -6,11 +6,11 @@
 
 ## 案例视频
 
-[![点击播放默认案例视频](docs/images/example-preview.jpg)](Assets/Examples/default-wallpaper.mp4)
+[![点击播放效果演示](docs/images/example-preview.jpg)](docs/media/demo.mp4)
 
-[▶ 播放默认案例视频](Assets/Examples/default-wallpaper.mp4)
+[▶ 播放效果演示](docs/media/demo.mp4)
 
-应用已内置同一视频，打开即可预览，点击「应用」开始运行。
+上方为效果演示视频。应用内置独立的默认壁纸视频，打开即可预览，点击「应用」开始运行。
 
 ## 控制台
 
@@ -73,4 +73,4 @@ bash test.sh # 需要已登录的 macOS 图形桌面
 
 ## License
 
-[MIT](LICENSE)。文件与应用图标在使用者本机读取，相关图标权利归原权利人；仓库不附带这些第三方应用图标。TapWall 应用图标由 AI 生成。内置案例视频与控制台截图由项目维护者提供。
+[MIT](LICENSE)。文件与应用图标在使用者本机读取，相关图标权利归原权利人；仓库不附带这些第三方应用图标。TapWall 应用图标由 AI 生成。内置壁纸、效果演示视频与控制台截图由项目维护者提供。
