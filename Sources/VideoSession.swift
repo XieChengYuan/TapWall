@@ -4,7 +4,7 @@ import Combine
 
 final class VideoSession: ObservableObject {
     @Published private(set) var player: AVPlayer?
-    // Separate players keep the wallpaper and inspector visible at the same time.
+    // Each session owns one clock. Applied wallpaper uses a separate snapshot session.
     @Published private(set) var previewPlayer: AVPlayer?
     @Published private(set) var name: String?
     @Published private(set) var duration = 0.0
@@ -66,7 +66,7 @@ final class VideoSession: ObservableObject {
         }
     }
 
-    private func install(asset: AVAsset, duration: Double, token: UUID) {
+    private func install(asset: AVAsset, duration: Double, token: UUID, thumbnails: Bool = true) {
         self.duration = duration
         dropTime = duration * 0.15
         dropEndTime = duration * 0.45
@@ -74,10 +74,8 @@ final class VideoSession: ObservableObject {
         returnEndTime = duration * 0.9
         let item = AVPlayerItem(asset: asset)
         let master = AVPlayer(playerItem: item)
-        let preview = AVPlayer(playerItem: AVPlayerItem(asset: asset))
         master.isMuted = muted
-        preview.isMuted = true
-        player = master; previewPlayer = preview
+        player = master; previewPlayer = master
         isLoading = false
         onPlayerChanged?(master)
         clock.reset()
@@ -90,10 +88,7 @@ final class VideoSession: ObservableObject {
             self.onTime?(self.currentTime)
             if self.isPlaying {
                 self.deliver(at: self.currentTime)
-                // Correct decoder drift without seeking every display frame.
-                if let preview = self.previewPlayer, abs(preview.currentTime().seconds - seconds) > 0.16 {
-                    preview.seek(to: time, toleranceBefore: CMTime(seconds: 0.03, preferredTimescale: 600), toleranceAfter: CMTime(seconds: 0.03, preferredTimescale: 600))
-                }
+
             }
             if let error = master?.currentItem?.error { self.error = error.localizedDescription }
         }
@@ -111,7 +106,17 @@ final class VideoSession: ObservableObject {
                 self.pause(); self.error = item.error?.localizedDescription ?? "视频无法播放。"
             }
         }
-        makeThumbnails(asset: asset, token: token)
+        if thumbnails { makeThumbnails(asset: asset, token: token) }
+    }
+
+    /// Copy immutable media and settings; never share an AVPlayer or playback cursor.
+    func appliedSnapshot() -> VideoSession? {
+        guard ready, let asset = player?.currentItem?.asset else { return nil }
+        let copy = VideoSession()
+        copy.loop = loop; copy.muted = muted; copy.name = name
+        copy.install(asset: asset, duration: duration, token: copy.generation, thumbnails: false)
+        copy.applySchedule(schedule)
+        return copy
     }
 
     private func makeThumbnails(asset: AVAsset, token: UUID) {
@@ -164,7 +169,6 @@ final class VideoSession: ObservableObject {
         let target = min(duration, max(0, value))
         currentTime = target
         let time = CMTime(seconds: target, preferredTimescale: 60000)
-        previewPlayer?.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
         player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
             DispatchQueue.main.async {
                 guard let self = self, self.generation == token, self.seekGeneration == revision else { return }
@@ -179,7 +183,7 @@ final class VideoSession: ObservableObject {
     private func startPlayers() {
         guard ready else { return }
         isPlaying = true
-        player?.play(); previewPlayer?.play()
+        player?.play()
     }
     func playPause() {
         if isPlaying { pause() }
@@ -187,7 +191,7 @@ final class VideoSession: ObservableObject {
         else if seeking { seek(to: currentTime, resume: true) }
         else { startPlayers() }
     }
-    func pause() { player?.pause(); previewPlayer?.pause(); isPlaying = false }
+    func pause() { player?.pause(); isPlaying = false }
     func replay() { seek(to: 0, resume: true, restarting: true) }
     func step(_ direction: Int) { seek(to: currentTime + Double(direction) / fps) }
     func clear() {

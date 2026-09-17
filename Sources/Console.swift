@@ -3,7 +3,7 @@ import SwiftUI
 import AVFoundation
 
 enum ConsoleAction {
-    case scatter, restore, toggleDesktop, hide, reload, sourceChanged, chooseFolder
+    case apply, scatter, restore, toggleDesktop, hide, reload, sourceChanged, chooseFolder
     case chooseVideo, clearVideo, useWallpaper
     case arrangement(IconArrangement), edge(IconEdge), dropMode(DropMode), returnMode(ReturnMode)
 }
@@ -89,9 +89,13 @@ struct ConsoleView: View {
             Text("桌面编排").font(.system(size: 11)).foregroundStyle(Ink.secondary).padding(.leading, 5)
             Spacer()
             Button { action(.toggleDesktop) } label: {
-                Label(model.isDesktop ? "返回窗口" : "应用到桌面", systemImage: model.isDesktop ? "macwindow" : "desktopcomputer")
-                    .padding(.horizontal, 14)
-            }.buttonStyle(ActionStyle(primary: true)).frame(width: 134)
+                Label(model.isDesktop ? "返回窗口" : "桌面模式", systemImage: model.isDesktop ? "macwindow" : "desktopcomputer")
+            }.buttonStyle(ActionStyle()).frame(width: 108)
+            Button { action(.apply) } label: {
+                Label(model.hasApplied ? "应用更改" : "应用", systemImage: "checkmark")
+            }.buttonStyle(ActionStyle(primary: true)).frame(width: 110)
+                .disabled(video.isLoading || video.error != nil)
+                .help("将当前视频、时间区间和图标设置应用到壁纸；之后预览与壁纸独立播放")
             Button { action(.hide) } label: { Image(systemName: "minus").frame(width: 28, height: 28) }
                 .buttonStyle(.plain).foregroundStyle(Ink.secondary).help("隐藏控制台，可从菜单栏重新打开").accessibilityLabel("隐藏控制台")
         }.padding(.horizontal, 22).frame(height: 62)
@@ -210,7 +214,7 @@ struct ConsoleView: View {
                 HStack {
                     Text("动作时间轴").font(.system(size: 11, weight: .semibold))
                     Spacer()
-                    Text("拖动两端调整范围，拖动色块整体移动").font(.system(size: 10)).foregroundStyle(Ink.secondary)
+                    Text("拖动设置区间，点击应用后生效").font(.system(size: 10)).foregroundStyle(Ink.secondary)
                 }
                 VideoTimeline(video: video).frame(height: 130)
                 HStack(spacing: 18) {

@@ -128,6 +128,7 @@ final class ConsoleModel: ObservableObject {
     @Published var status = "准备就绪"
     @Published var count = 0
     @Published var isDesktop = false
+    @Published var hasApplied = false
     @Published var isFalling = false
 }
 

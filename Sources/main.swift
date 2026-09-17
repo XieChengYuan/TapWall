@@ -104,6 +104,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var scene: TumbleScene!
     let console = ConsoleModel()
     let video = VideoSession()
+    var wallpaperVideo: VideoSession?
+    var draftItems: [IconItem] = []
+    var draftWallpaper: NSImage?
     var desktopMode = false
     var savedFrame = NSRect.zero
     var customFolder: URL?
@@ -124,17 +127,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
         controls.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        video.onPlayerChanged = { [weak self] player in
-            self?.stage.playerLayer.player = player; self?.stage.hasVideo = player != nil
-        }
-        video.onTime = { [weak self] time in
-            guard let self = self else { return }
-            self.spatial.sample(time: time, schedule: self.video.schedule)
-        }
-        video.onSeek = { [weak self] _ in
-            guard let self = self else { return }
-            self.spatial.sample(time: self.video.currentTime, schedule: self.video.schedule)
-        }
         if let index = CommandLine.arguments.firstIndex(of: "--preview-video"), CommandLine.arguments.count > index + 1 {
             video.load(URL(fileURLWithPath: CommandLine.arguments[index + 1]))
         }
@@ -216,6 +208,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         controls.contentView = NSHostingView(rootView: ConsoleView(model: console, video: video) { [weak self] action in
             guard let self = self else { return }
             switch action {
+            case .apply: self.applySettings()
             case .scatter: self.scatter()
             case .restore: self.restore()
             case .toggleDesktop: self.toggleDesktop()
@@ -227,11 +220,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             case .useWallpaper: self.useWallpaper()
             case .chooseFolder: self.chooseFolder()
             case .edge(let edge):
-                self.console.edge = edge; self.scene.edge = edge
+                self.console.edge = edge
                 UserDefaults.standard.set(edge.rawValue, forKey: "iconEdge")
-                self.scene.restore()
+                if !self.console.hasApplied { self.scene.edge = edge; self.scene.restore() }
             case .returnMode(let mode):
-                self.console.returnMode = mode; self.scene.returnMode = mode
+                self.console.returnMode = mode
+                if !self.console.hasApplied { self.scene.returnMode = mode }
                 UserDefaults.standard.set(mode.rawValue, forKey: "returnMode")
             case .arrangement(let arrangement): self.changeArrangement(arrangement)
             case .dropMode(let mode): self.changeDropMode(mode)
@@ -241,14 +235,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
     func changeArrangement(_ arrangement: IconArrangement) {
         console.arrangement = arrangement
-        scene.arrangement = arrangement
+        if !console.hasApplied { scene.arrangement = arrangement }
         if !verification { UserDefaults.standard.set(arrangement.rawValue, forKey: "iconArrangement") }
-        scene.restore(animated: !verification && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
-        console.status = "图标已改为\(arrangement.title) · 文件和 Finder 布局未改动"
+        if !console.hasApplied { scene.restore(animated: !verification && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) }
+        console.status = "已选择\(arrangement.title) · 点击应用生效"
     }
     func changeDropMode(_ mode: DropMode) {
         console.dropMode = mode
-        scene.dropMode = mode
+        if !console.hasApplied { scene.dropMode = mode }
         if !verification { UserDefaults.standard.set(mode.rawValue, forKey: "dropMode") }
         console.status = "已选择\(mode.title)：\(mode.detail)"
     }
@@ -283,15 +277,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if index == 0 { items.append(contentsOf: Catalog.applications().prefix(max(0, 24 - items.count))) }
             let total = items.count
             items = Array(items.prefix(32))
-            scene.load(items)
+            draftItems = items
+            if !console.hasApplied { scene.load(items) }
             console.count = items.count
             console.isFalling = false
             console.status = total > 32 ? "为保持交互流畅，显示前 32 个项目。原文件和 Finder 布局未改动。" : "双击打开 · 右键在 Finder 中显示"
         } catch {
-            scene.load([])
+            draftItems = []
+            if !console.hasApplied { scene.load([]) }
             console.count = 0; console.isFalling = false
             console.status = "读取失败：\(error.localizedDescription)；可通过“选择文件夹”授权访问。"
         }
+    }
+    func applySettings() {
+        guard !video.isLoading, video.error == nil else { return }
+        let applied = video.appliedSnapshot()
+        wallpaperVideo?.clear()
+        wallpaperVideo = applied
+        console.hasApplied = true
+        scene.arrangement = console.arrangement; scene.edge = console.edge
+        scene.returnMode = console.returnMode; scene.dropMode = console.dropMode
+        scene.load(draftItems)
+        stage.playerLayer.player = applied?.player
+        stage.hasVideo = applied != nil
+        stage.wallpaper = draftWallpaper
+        stage.needsDisplay = true
+        if !desktopMode { toggleDesktop() }
+        if let applied = applied {
+            applied.onTime = { [weak self, weak applied] time in
+                guard let self = self, let applied = applied, self.wallpaperVideo === applied else { return }
+                self.spatial.sample(time: time, schedule: applied.schedule)
+            }
+            applied.onSeek = { [weak self, weak applied] _ in
+                guard let self = self, let applied = applied, self.wallpaperVideo === applied else { return }
+                self.spatial.sample(time: applied.currentTime, schedule: applied.schedule)
+            }
+            applied.replay()
+        }
+        console.status = "已应用 · 预览操作不会影响壁纸，修改后再次点击应用"
+        controls.makeKeyAndOrderFront(nil)
     }
     @objc func scatter() { scene.scatter(); window.makeFirstResponder(spatial) }
     @objc func restore() { scene.restore(); window.makeFirstResponder(spatial) }
@@ -322,20 +346,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     @objc func useWallpaper() {
         clearVideo()
         if let screen = window.screen ?? NSScreen.main, let url = NSWorkspace.shared.desktopImageURL(for: screen), let image = NSImage(contentsOf: url) {
-            stage.wallpaper = image; stage.needsDisplay = true; console.status = "已读取当前壁纸 · 不更改系统壁纸设置"
+            draftWallpaper = image; console.status = "已选择当前壁纸 · 点击应用生效"
         } else { console.status = "当前壁纸无法读取（可能为动态壁纸），继续使用默认背景。" }
     }
     @objc func chooseVideo() {
         let picker = NSOpenPanel(); picker.allowedContentTypes = [.movie]; picker.canChooseDirectories = false; picker.message = "选择本地视频作为背景，图标按完整三维物理轨迹播放。视频默认静音。"
         guard picker.runModal() == .OK, let url = picker.url else { return }
+        draftWallpaper = nil
         video.load(url)
     }
-    @objc func clearVideo() { video.clear(); stage.wallpaper = nil; stage.needsDisplay = true; scene.restore(animated: false) }
+    @objc func clearVideo() { video.clear(); draftWallpaper = nil; console.status = "已移除预览视频 · 点击应用生效" }
     func windowShouldClose(_ sender: NSWindow) -> Bool {
         if sender === controls { controls.orderOut(nil) } else { NSApp.terminate(nil) }
         return false
     }
-    func applicationWillTerminate(_ notification: Notification) { video.clear() }
+    func applicationWillTerminate(_ notification: Notification) { video.clear(); wallpaperVideo?.clear() }
 
     func verifyRunningApp() {
         verifyModels()
