@@ -123,6 +123,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let iconURL = Bundle.main.url(forResource: "TapWall", withExtension: "png") {
             NSApp.applicationIconImage = NSImage(contentsOf: iconURL)
         }
+        let exampleURL = Bundle.main.url(forResource: "default-wallpaper", withExtension: "mp4")
+        let example = DefaultExample.load(from: Bundle.main.url(forResource: "DefaultExample", withExtension: "json"))
+        let useExample = !verification && !CommandLine.arguments.contains("--preview-video") && exampleURL != nil
+        if useExample, let example = example {
+            console.source = 0; console.arrangement = example.arrangement; console.edge = example.edge
+            console.dropMode = example.dropMode; console.returnMode = example.returnMode
+        }
         buildMenu()
         buildWindow()
         buildControls()
@@ -133,6 +140,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let index = CommandLine.arguments.firstIndex(of: "--preview-video"), CommandLine.arguments.count > index + 1 {
             video.load(URL(fileURLWithPath: CommandLine.arguments[index + 1]))
         }
+        else if useExample, let url = exampleURL { video.load(url, preset: example) }
         if verification { verifyRunningApp() }
     }
     func buildMenu() {

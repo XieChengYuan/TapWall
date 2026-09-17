@@ -1,0 +1,12 @@
+{
+  "arrangement": "grid",
+  "edge": "left",
+  "dropMode": "shake",
+  "returnMode": "cascade",
+  "dropStart": 2.35,
+  "dropEnd": 3.32,
+  "returnStart": 4.84,
+  "returnEnd": 5.94,
+  "loop": true,
+  "muted": true
+}

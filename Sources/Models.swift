@@ -1,7 +1,7 @@
 import AppKit
 import Combine
 
-enum IconArrangement: String, CaseIterable {
+enum IconArrangement: String, CaseIterable, Decodable {
     case horizontal, vertical, grid
     var title: String {
         switch self { case .horizontal: return "横排"; case .vertical: return "竖排"; case .grid: return "方阵" }
@@ -10,11 +10,11 @@ enum IconArrangement: String, CaseIterable {
         switch self { case .horizontal: return "rectangle.split.3x1"; case .vertical: return "rectangle.split.1x2"; case .grid: return "square.grid.2x2" }
     }
 }
-enum IconEdge: String, CaseIterable {
+enum IconEdge: String, CaseIterable, Decodable {
     case left, right
     var title: String { self == .left ? "靠左" : "靠右" }
 }
-enum DropMode: String, CaseIterable {
+enum DropMode: String, CaseIterable, Decodable {
     case shake, freefall, wind, vortex, burst
     var title: String {
         switch self { case .shake: return "震落"; case .freefall: return "直落"; case .wind: return "风吹"; case .vortex: return "旋落"; case .burst: return "弹飞" }
@@ -26,7 +26,7 @@ enum DropMode: String, CaseIterable {
         switch self { case .shake: return "轻轻震开，再自然落下"; case .freefall: return "沿竖直方向自由下落"; case .wind: return "从屏幕边缘向内吹散"; case .vortex: return "旋转着散开落下"; case .burst: return "向四周弹开、碰撞" }
     }
 }
-enum ReturnMode: String, CaseIterable {
+enum ReturnMode: String, CaseIterable, Decodable {
     case glide, spring, arc, cascade, instant
     var title: String {
         switch self { case .glide: return "平滑"; case .spring: return "弹性"; case .arc: return "弧线"; case .cascade: return "依次"; case .instant: return "瞬间" }

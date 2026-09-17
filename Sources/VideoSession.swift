@@ -38,7 +38,7 @@ final class VideoSession: ObservableObject {
     var ready: Bool { player != nil && duration > 0 && !isLoading }
     var schedule: CueSchedule { CueSchedule(duration: duration, drop: dropTime, dropEnd: dropEndTime, restore: returnTime, restoreEnd: returnEndTime) }
 
-    func load(_ url: URL) {
+    func load(_ url: URL, preset: DefaultExample? = nil) {
         clear()
         let token = generation
         isLoading = true
@@ -53,6 +53,12 @@ final class VideoSession: ObservableObject {
                     self.isLoading = false; self.error = "无法读取这段视频，请选择可播放的 MOV 或 MP4。"; return
                 }
                 self.install(asset: asset, duration: length, token: token)
+                if let preset = preset {
+                    if let schedule = preset.schedule(duration: length) {
+                        self.applySchedule(schedule)
+                        self.loop = preset.loop; self.muted = preset.muted
+                    } else { self.error = "默认案例的时间配置超出视频时长。" }
+                }
                 let tracks = try await asset.loadTracks(withMediaType: .video)
                 if let track = tracks.first {
                     let rate = try await track.load(.nominalFrameRate)

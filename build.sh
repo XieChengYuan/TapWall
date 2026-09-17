@@ -22,7 +22,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>TapWall</string>
 <key>CFBundleIconFile</key><string>TapWall</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.4.2</string>
+<key>CFBundleShortVersionString</key><string>0.4.3</string>
 <key>LSMinimumSystemVersion</key><string>13.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSDesktopFolderUsageDescription</key><string>读取真实桌面项目的名称和图标，用于互动展示；不会修改或移动文件。</string>
@@ -30,5 +30,6 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 swiftc -swift-version 5 -target "$(uname -m)-apple-macosx13.0" -O -framework AppKit -framework SceneKit -framework SwiftUI -framework AVFoundation Sources/*.swift -o "$APP/Contents/MacOS/TapWall"
 cp Assets/TapWall.icns Assets/TapWall.png "$APP/Contents/Resources/"
+cp Assets/Examples/default-wallpaper.mp4 Assets/Examples/DefaultExample.json "$APP/Contents/Resources/"
 codesign --force --sign - "$APP"
 printf 'Built: %s\n' "$APP"

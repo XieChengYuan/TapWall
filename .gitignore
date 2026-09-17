@@ -8,3 +8,5 @@ build/
 .env.*
 *.mov
 *.mp4
+
+!Assets/Examples/default-wallpaper.mp4
