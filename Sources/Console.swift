@@ -4,7 +4,7 @@ import AVFoundation
 
 enum ConsoleAction {
     case selectWallpaper(WallpaperKind)
-    case apply, scatter, restore, toggleDesktop, hide, reload, sourceChanged, chooseFolder
+    case apply, scatter, restore, toggleDesktop, minimize, reload, sourceChanged, chooseFolder
     case chooseVideo, clearVideo, useWallpaper
     case arrangement(IconArrangement), edge(IconEdge), dropMode(DropMode), returnMode(ReturnMode)
 }
@@ -99,8 +99,8 @@ struct ConsoleView: View {
             }.buttonStyle(ActionStyle(primary: true)).frame(width: 110)
                 .disabled(model.wallpaperKind == .video && (video.isLoading || video.error != nil))
                 .help("将当前壁纸与设置应用到桌面，预览操作保持独立")
-            Button { action(.hide) } label: { Image(systemName: "minus").frame(width: 28, height: 28) }
-                .buttonStyle(.plain).foregroundStyle(Ink.secondary).help("隐藏控制台，可从菜单栏重新打开").accessibilityLabel("隐藏控制台")
+            Button { action(.minimize) } label: { Image(systemName: "minus").frame(width: 28, height: 28) }
+                .buttonStyle(.plain).foregroundStyle(Ink.secondary).help("最小化控制台，可从 Dock 或菜单栏恢复").accessibilityLabel("最小化控制台")
         }.padding(.horizontal, 22).frame(height: 62)
     }
 

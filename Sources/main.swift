@@ -202,7 +202,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.makeFirstResponder(spatial)
     }
     func buildControls() {
-        controls = NSPanel(contentRect: NSRect(origin: .zero, size: CGSize(width: 1040, height: 720)), styleMask: [.titled, .closable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        controls = NSPanel(contentRect: NSRect(origin: .zero, size: CGSize(width: 1040, height: 720)), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         controls.title = "TapWall 控制台"
         controls.delegate = self
         controls.minSize = CGSize(width: 900, height: 700)
@@ -229,7 +229,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             case .scatter: self.scatter()
             case .restore: self.restore()
             case .toggleDesktop: self.toggleDesktop()
-            case .hide: self.hideControls()
+            case .minimize: self.minimizeControls()
             case .reload: self.reload()
             case .sourceChanged: self.changeSource()
             case .chooseVideo: self.chooseVideo()
@@ -276,8 +276,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if picker.runModal() == .OK, let url = picker.url { customFolder = url; console.source = 2; reload() }
         else { console.source = old }
     }
-    @objc func showControls() { controls.makeKeyAndOrderFront(nil) }
-    @objc func hideControls() { controls.orderOut(nil); window.makeKeyAndOrderFront(nil); window.makeFirstResponder(spatial) }
+    @objc func showControls() {
+        if controls.isMiniaturized { controls.deminiaturize(nil) }
+        controls.makeKeyAndOrderFront(nil)
+    }
+    @objc func minimizeControls() { controls.miniaturize(nil) }
     @objc func changeSource() {
         if console.source == 2 {
             let picker = NSOpenPanel(); picker.canChooseDirectories = true; picker.canChooseFiles = false; picker.prompt = "读取图标"; picker.message = "只读取文件名称和图标，不修改文件。"
