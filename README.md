@@ -6,9 +6,9 @@
 
 ## 案例视频
 
-[![点击播放效果演示](docs/images/example-preview.jpg)](docs/media/demo.mp4)
+[![点击播放效果演示](docs/images/example-preview.jpg)](https://xiechengyuan.github.io/TapWall/)
 
-[▶ 播放效果演示](docs/media/demo.mp4)
+[▶ 在线播放效果演示](https://xiechengyuan.github.io/TapWall/) · [下载视频](https://xiechengyuan.github.io/TapWall/media/demo.mp4)
 
 上方为效果演示视频。应用内置独立的默认壁纸视频，打开即可预览，点击「应用」开始运行。
 
