@@ -119,7 +119,25 @@ struct CueClock {
     }
 }
 
+enum WallpaperCategory: String, CaseIterable, Identifiable {
+    case video, interactive
+    var id: String { rawValue }
+    var title: String { self == .video ? "视频壁纸" : "互动壁纸" }
+    var symbol: String { self == .video ? "play.rectangle" : "cursorarrow.motionlines" }
+    var detail: String { self == .video ? "视频与图标动作" : "选择场景，与桌面互动" }
+}
+
+enum WallpaperKind: String, CaseIterable, Identifiable {
+    case video, cat
+    var id: String { rawValue }
+    var category: WallpaperCategory { self == .video ? .video : .interactive }
+    var title: String { self == .video ? "视频壁纸" : "窗边的猫" }
+    static var interactiveScenes: [WallpaperKind] { allCases.filter { $0.category == .interactive } }
+}
+
 final class ConsoleModel: ObservableObject {
+    @Published var wallpaperKind = WallpaperKind.video
+    @Published var catPreviewPaused = false
     @Published var arrangement = IconArrangement(rawValue: UserDefaults.standard.string(forKey: "iconArrangement") ?? "") ?? .vertical
     @Published var edge = IconEdge(rawValue: UserDefaults.standard.string(forKey: "iconEdge") ?? "") ?? .right
     @Published var dropMode = DropMode(rawValue: UserDefaults.standard.string(forKey: "dropMode") ?? "") ?? .shake

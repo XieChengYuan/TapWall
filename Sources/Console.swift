@@ -3,6 +3,7 @@ import SwiftUI
 import AVFoundation
 
 enum ConsoleAction {
+    case selectWallpaper(WallpaperKind)
     case apply, scatter, restore, toggleDesktop, hide, reload, sourceChanged, chooseFolder
     case chooseVideo, clearVideo, useWallpaper
     case arrangement(IconArrangement), edge(IconEdge), dropMode(DropMode), returnMode(ReturnMode)
@@ -68,7 +69,9 @@ struct ConsoleView: View {
             HStack(spacing: 0) {
                 inspector.frame(width: 260)
                 Divider()
-                editor.frame(maxWidth: .infinity, maxHeight: .infinity)
+                Group {
+                    if model.wallpaperKind == .video { editor } else { catEditor }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             footer
         }
@@ -86,7 +89,7 @@ struct ConsoleView: View {
                 Image(nsImage: icon).resizable().frame(width: 38, height: 38).accessibilityHidden(true)
             }
             Text("TapWall").font(.system(size: 19, weight: .semibold, design: .rounded))
-            Text("桌面编排").font(.system(size: 11)).foregroundStyle(Ink.secondary).padding(.leading, 5)
+            Text("壁纸与互动").font(.system(size: 11)).foregroundStyle(Ink.secondary).padding(.leading, 5)
             Spacer()
             Button { action(.toggleDesktop) } label: {
                 Label(model.isDesktop ? "返回窗口" : "桌面模式", systemImage: model.isDesktop ? "macwindow" : "desktopcomputer")
@@ -94,8 +97,8 @@ struct ConsoleView: View {
             Button { action(.apply) } label: {
                 Label(model.hasApplied ? "应用更改" : "应用", systemImage: "checkmark")
             }.buttonStyle(ActionStyle(primary: true)).frame(width: 110)
-                .disabled(video.isLoading || video.error != nil)
-                .help("将当前视频、时间区间和图标设置应用到壁纸；之后预览与壁纸独立播放")
+                .disabled(model.wallpaperKind == .video && (video.isLoading || video.error != nil))
+                .help("将当前壁纸与设置应用到桌面，预览操作保持独立")
             Button { action(.hide) } label: { Image(systemName: "minus").frame(width: 28, height: 28) }
                 .buttonStyle(.plain).foregroundStyle(Ink.secondary).help("隐藏控制台，可从菜单栏重新打开").accessibilityLabel("隐藏控制台")
         }.padding(.horizontal, 22).frame(height: 62)
@@ -104,6 +107,9 @@ struct ConsoleView: View {
     private var inspector: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 23) {
+                wallpaperLibrary
+                Divider()
+                if model.wallpaperKind == .video {
                 sourceSection
                 Divider()
                 arrangementSection
@@ -121,9 +127,77 @@ struct ConsoleView: View {
                     Text("也可用空格掉落，R 归位。")
                         .font(.system(size: 10)).foregroundStyle(Ink.secondary)
                 }
+                } else if model.wallpaperKind == .cat {
+                    VStack(alignment: .leading, spacing: 12) {
+                        sectionTitle("和它相处")
+                        Text("把鼠标移到猫咪附近，慢慢晃动，再轻轻移开。")
+                        Text("它会观察、蓄力和扑过去。安静一会儿，它就会打盹。")
+                        Text("停在头顶，它会眯眼蹭你；移到窗台下，它会靠近、俯身伸爪去够。")
+                        Text("桌面文件仍可正常点击。")
+                    }.font(.system(size: 12)).foregroundStyle(Ink.secondary).lineSpacing(5)
+                }
                 Spacer(minLength: 0)
             }.padding(22)
         }.background(Color.white.opacity(0.52))
+    }
+    private var wallpaperLibrary: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("壁纸类型")
+            ForEach(WallpaperCategory.allCases) { category in
+                Button { action(.selectWallpaper(category == .video ? .video : .cat)) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: category.symbol).font(.system(size: 20, weight: .regular)).frame(width: 28)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(category.title).font(.system(size: 12, weight: .semibold))
+                            Text(category.detail).font(.system(size: 10)).foregroundStyle(Ink.secondary)
+                        }
+                        Spacer(minLength: 0)
+                        if model.wallpaperKind.category == category { Image(systemName: "checkmark").font(.system(size: 11, weight: .semibold)) }
+                    }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(model.wallpaperKind.category == category ? Ink.accent.opacity(0.08) : Color.clear)
+                        .foregroundStyle(model.wallpaperKind.category == category ? Ink.accent : Ink.text)
+                        .clipShape(RoundedRectangle(cornerRadius: 9))
+                        .contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityAddTraits(model.wallpaperKind.category == category ? .isSelected : [])
+            }
+        }
+    }
+    private var catEditor: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                Text("互动场景").font(.system(size: 12, weight: .semibold))
+                Picker("选择互动场景", selection: Binding(get: { model.wallpaperKind }, set: { action(.selectWallpaper($0)) })) {
+                    ForEach(WallpaperKind.interactiveScenes) { scene in
+                        Text(scene.title).tag(scene)
+                    }
+                }.labelsHidden().frame(width: 180)
+                Spacer()
+            }
+            Divider()
+            HStack {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("窗边的猫").font(.system(size: 18, weight: .semibold))
+                    Text("一段不着急的陪伴").font(.system(size: 12)).foregroundStyle(Ink.secondary)
+                }
+                Spacer()
+                Text("互动壁纸").font(.system(size: 11)).foregroundStyle(Ink.secondary)
+            }
+            CatPreview(paused: model.catPreviewPaused)
+                .frame(maxWidth: .infinity, maxHeight: .infinity).frame(minHeight: 250)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .accessibilityLabel("猫咪互动预览，将鼠标移入画面逗猫")
+            HStack {
+                Label("移入画面，试着逗逗它", systemImage: "cursorarrow.motionlines")
+                    .font(.system(size: 12)).foregroundStyle(Ink.secondary)
+                Spacer()
+                Button { model.catPreviewPaused.toggle() } label: {
+                    Label(model.catPreviewPaused ? "继续预览" : "暂停预览", systemImage: model.catPreviewPaused ? "play.fill" : "pause.fill")
+                }.buttonStyle(.bordered)
+            }
+            Divider()
+            Text("满意后点击“应用”。预览的暂停和切换不会影响已应用的桌面。")
+                .font(.system(size: 11)).foregroundStyle(Ink.secondary)
+        }.padding(24)
     }
     private func sectionTitle(_ title: String) -> some View {
         Text(title).font(.system(size: 12, weight: .semibold))

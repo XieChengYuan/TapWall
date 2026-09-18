@@ -105,6 +105,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     let console = ConsoleModel()
     let video = VideoSession()
     var wallpaperVideo: VideoSession?
+    var appliedKind = WallpaperKind.video
+    var catWallpaper: CatSceneView?
     var draftItems: [IconItem] = []
     var draftWallpaper: NSImage?
     var draftMonitor: DirectoryMonitor?
@@ -219,6 +221,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         controls.contentView = NSHostingView(rootView: ConsoleView(model: console, video: video) { [weak self] action in
             guard let self = self else { return }
             switch action {
+            case .selectWallpaper(let kind):
+                self.console.wallpaperKind = kind
+                if kind != .video { self.video.pause() }
+                self.console.status = "已选择\(kind.title) · 点击应用生效"
             case .apply: self.applySettings()
             case .scatter: self.scatter()
             case .restore: self.restore()
@@ -322,7 +328,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         refreshApplied()
     }
     func applySettings() {
+        if console.wallpaperKind != .video { applyInteractive(); return }
         guard !video.isLoading, video.error == nil else { return }
+        catWallpaper?.removeFromSuperview(); catWallpaper = nil
+        appliedKind = .video
+        spatial.isHidden = false
+        updateDesktopInteraction()
         let applied = video.appliedSnapshot()
         wallpaperVideo?.clear()
         wallpaperVideo = applied
@@ -352,8 +363,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         console.status = "已应用 · 预览操作不会影响壁纸，修改后再次点击应用"
         controls.makeKeyAndOrderFront(nil)
     }
-    @objc func scatter() { scene.scatter(); window.makeFirstResponder(spatial) }
-    @objc func restore() { scene.restore(); window.makeFirstResponder(spatial) }
+    func applyInteractive() {
+        wallpaperVideo?.clear(); wallpaperVideo = nil
+        appliedMonitor = nil; appliedSource = nil
+        stage.playerLayer.player = nil; stage.hasVideo = false
+        spatial.stop()
+        spatial.isHidden = true
+        catWallpaper?.removeFromSuperview(); catWallpaper = nil
+        let content = CatSceneView(frame: stage.bounds)
+        catWallpaper = content
+        content.autoresizingMask = [.width, .height]
+        stage.addSubview(content)
+        appliedKind = console.wallpaperKind; console.hasApplied = true; console.isFalling = false
+        if !desktopMode { toggleDesktop() }
+        updateDesktopInteraction()
+        console.status = "已应用\(appliedKind.title) · 移动鼠标即可互动，桌面文件可正常使用"
+        controls.makeKeyAndOrderFront(nil)
+    }
+    func updateDesktopInteraction() {
+        window.ignoresMouseEvents = desktopMode && appliedKind != .video
+        if desktopMode {
+            window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(appliedKind != .video ? .desktopWindow : .desktopIconWindow)) + 1)
+        }
+    }
+    @objc func scatter() { guard appliedKind == .video else { return }; scene.scatter(); window.makeFirstResponder(spatial) }
+    @objc func restore() { guard appliedKind == .video else { return }; scene.restore(); window.makeFirstResponder(spatial) }
     @objc func toggleDesktop() {
         desktopMode.toggle()
         if desktopMode {
@@ -373,6 +407,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             console.isDesktop = false
             console.status = "已返回窗口模式 · Finder 桌面未修改"
         }
+        updateDesktopInteraction()
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(spatial)
         positionControls()
@@ -419,6 +454,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 }
             }
         }
+        console.wallpaperKind = .cat
+        applySettings()
+        precondition(catWallpaper != nil && spatial.isHidden && window.ignoresMouseEvents)
+        let appliedCat = catWallpaper
+        console.catPreviewPaused = true
+        precondition(appliedCat?.paused == false)
+        console.wallpaperKind = .video
+        precondition(catWallpaper === appliedCat)
+        applySettings()
+        precondition(catWallpaper == nil && !spatial.isHidden && !window.ignoresMouseEvents)
+        if desktopMode { toggleDesktop() }
+        print("PASS: scene apply isolation, cat click-through, video restoration")
         print("PASS: real 3D physics bake, settled lower-edge pile, complete time remapping, four cue boundaries")
         NSApp.terminate(nil)
     }

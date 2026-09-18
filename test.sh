@@ -15,3 +15,6 @@ swiftc -swift-version 5 Sources/DirectoryMonitor.swift Tests/DirectoryChecks.swi
 
 swiftc -swift-version 5 Sources/Models.swift Sources/DefaultExample.swift Sources/VideoSession.swift Tests/ExampleChecks.swift -o "$TEST_DIR/ExampleChecks"
 "$TEST_DIR/ExampleChecks" "$TAPWALL_APP_PATH/Contents/Resources"
+
+swiftc -swift-version 5 Sources/CatScene.swift Tests/CatChecks.swift -o "$TEST_DIR/CatChecks"
+"$TEST_DIR/CatChecks"
